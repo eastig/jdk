@@ -381,6 +381,7 @@ int os::extra_bang_size_in_bytes() {
 
 extern "C" {
   int SpinPause() {
+    __asm volatile("isb");
     return 0;
   }
 
