@@ -55,6 +55,7 @@
 #include "memory/allocation.hpp"
 #include "memory/iterator.hpp"
 #include "memory/memRegion.hpp"
+#include "runtime/mutexLocker.hpp"
 #include "utilities/bitMap.hpp"
 
 // A "G1CollectedHeap" is an implementation of a java heap for HotSpot.
@@ -228,26 +229,6 @@ private:
   // Helper for monitoring and management support.
   G1MonitoringSupport* _monitoring_support;
 
-  // Records whether the region at the given index is (still) a
-  // candidate for eager reclaim.  Only valid for humongous start
-  // regions; other regions have unspecified values.  Humongous start
-  // regions are initialized at start of collection pause, with
-  // candidates removed from the set as they are found reachable from
-  // roots or the young generation.
-  class HumongousReclaimCandidates : public G1BiasedMappedArray<bool> {
-  protected:
-    bool default_value() const override { return false; }
-  public:
-    void clear() { G1BiasedMappedArray<bool>::clear(); }
-    void set_candidate(uint region, bool value) {
-      set_by_index(region, value);
-    }
-    bool is_candidate(uint region) {
-      return get_by_index(region);
-    }
-  };
-
-  HumongousReclaimCandidates _humongous_reclaim_candidates;
   uint _num_humongous_objects; // Current amount of (all) humongous objects found in the heap.
   uint _num_humongous_reclaim_candidates; // Number of humongous object eager reclaim candidates.
 public:
@@ -589,9 +570,6 @@ public:
   // Does the given region fulfill remembered set based eager reclaim candidate requirements?
   bool is_potential_eager_reclaim_candidate(HeapRegion* r) const;
 
-  // Modify the reclaim candidate set and test for presence.
-  // These are only valid for starts_humongous regions.
-  inline void set_humongous_reclaim_candidate(uint region, bool value);
   inline bool is_humongous_reclaim_candidate(uint region);
 
   // Remove from the reclaim candidate set.  Also remove from the
@@ -1044,9 +1022,9 @@ public:
 
   // Return "TRUE" iff the given object address is within the collection
   // set. Assumes that the reference points into the heap.
-  inline bool is_in_cset(const HeapRegion *hr);
-  inline bool is_in_cset(oop obj);
-  inline bool is_in_cset(HeapWord* addr);
+  inline bool is_in_cset(const HeapRegion *hr) const;
+  inline bool is_in_cset(oop obj) const;
+  inline bool is_in_cset(HeapWord* addr) const;
 
   inline bool is_in_cset_or_humongous(const oop obj);
 
@@ -1252,7 +1230,7 @@ public:
   inline bool is_obj_dead_full(const oop obj) const;
 
   // Mark the live object that failed evacuation in the prev bitmap.
-  void mark_evac_failure_object(const oop obj, uint worker_id) const;
+  void mark_evac_failure_object(oop obj) const;
 
   G1ConcurrentMark* concurrent_mark() const { return _cm; }
 
@@ -1297,16 +1275,6 @@ public:
   void prepare_for_verify() override;
 
   // Perform verification.
-
-  // vo == UsePrevMarking -> use "prev" marking information,
-  // vo == UseFullMarking -> use "next" marking bitmap but no TAMS
-  //
-  // NOTE: Only the "prev" marking information is guaranteed to be
-  // consistent most of the time, so most calls to this should use
-  // vo == UsePrevMarking.
-  // Currently there is only one place where this is called with
-  // vo == UseFullMarking, which is to verify the marking during a
-  // full GC.
   void verify(VerifyOption vo) override;
 
   // WhiteBox testing support.
