@@ -49,6 +49,6 @@ public:
   void flush_bundle(bool start_new_bundle) {}
   static constexpr bool supports_shared_stubs() { return true; }
 
-  void shared_stub_to_runtime_call_for(address dest, int caller_offset);
+  void shared_stub_to_runtime_for(address dest, int caller_offset);
 
 #endif // CPU_AARCH64_CODEBUFFER_AARCH64_HPP

@@ -26,7 +26,7 @@
 #include "asm/codeBuffer.inline.hpp"
 #include "asm/macroAssembler.hpp"
 
-void CodeBuffer::shared_stub_to_runtime_call_for(address dest, int caller_offset) {
+void CodeBuffer::shared_stub_to_runtime_for(address dest, int caller_offset) {
   if (_shared_stub_to_runtime_call_requests == nullptr) {
     _shared_stub_to_runtime_call_requests = new SharedStubToRuntimeCallRequests();
   }
@@ -41,14 +41,19 @@ bool emit_shared_stubs_to_runtime_call(CodeBuffer* cb, CodeBuffer::SharedStubToR
     return true;
   }
   auto by_dest = [](CodeBuffer::SharedStubToRuntimeCallRequest* r1, CodeBuffer::SharedStubToRuntimeCallRequest* r2) {
-    return int(r1->dest() - r2->dest());
+    if (r1->dest() < r2->dest()) {
+      return -1;
+    } else if (r1->dest() == r2->dest()) {
+      return 0;
+    } else {
+      return 1;
+    }
   };
   requests->sort(by_dest);
 
   MacroAssembler masm(cb);
-  int relocations_saved = 0;
   const int length = requests->length();
-  for (int i = 0; i < length;) {
+  for (int i = 0; i < length; i++) {
     const address dest = requests->at(i).dest();
 
     masm.set_code_section(cb->stubs());
@@ -56,21 +61,16 @@ bool emit_shared_stubs_to_runtime_call(CodeBuffer* cb, CodeBuffer::SharedStubToR
     for (; (i + 1) < length && requests->at(i + 1).dest() == dest; i++) {
       masm.relocate(trampoline_stub_Relocation::spec(cb->insts()->start()
                                                      + requests->at(i).caller_offset()));
-      relocations_saved++;
     }
     masm.set_code_section(cb->insts());
 
-    address stub = masm.emit_trampoline_stub(requests->at(i++).caller_offset(), dest);
+    address stub = masm.emit_trampoline_stub(requests->at(i).caller_offset(), dest);
     if (stub == nullptr) {
       ciEnv::current()->record_failure("CodeCache is full");
       return false;
     }
   }
 
-  if (relocations_saved > 1 && UseNewCode) {
-    tty->print_cr("Requests %d", (int)requests->length());
-    tty->print_cr("Saved %d", relocations_saved * CompiledStaticCall::to_trampoline_stub_size());
-  }
   return true;
 }
 
