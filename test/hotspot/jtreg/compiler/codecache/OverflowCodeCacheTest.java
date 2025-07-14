@@ -158,7 +158,7 @@ public class OverflowCodeCacheTest {
     }
 
     CodeCacheConstraints getCodeCacheConstraints(final BlobType type) {
-        if (WHITE_BOX.getUintxVMFlag("HotCodeHeapSize") == 0) {
+        if (Long.valueOf(0).equals(WHITE_BOX.getVMFlag("HotCodeHeapSize"))) {
             return new CodeCacheConstraints();
         } else if (BlobType.MethodHot == type) {
             // NonProfiledHeap is used when HotCodeHeap runs out of space.

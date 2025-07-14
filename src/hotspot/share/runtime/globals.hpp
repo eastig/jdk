@@ -1542,7 +1542,8 @@ const int ObjectAlignmentInBytes = 8;
           "Size of code heap with non-nmethods (in bytes)")                 \
           constraint(VMPageSizeConstraintFunc, AtParse)                     \
                                                                             \
-  product(uintx, HotCodeHeapSize, 0,                                        \
+  /* TODO: create product_pd version */                                     \
+  product(size_t, HotCodeHeapSize, 0,                                        \
           "Size of code heap with predicted hot methods (in bytes)")        \
           constraint(VMPageSizeConstraintFunc, AtParse)                     \
                                                                             \

@@ -108,7 +108,7 @@ public enum BlobType {
             result.remove(MethodProfiled);
         }
 
-        if (whiteBox.getUintxVMFlag("HotCodeHeapSize") == 0) {
+        if (Long.valueOf(0).equals(whiteBox.getVMFlag("HotCodeHeapSize"))) {
             result.remove(MethodHot);
         }
         return result;

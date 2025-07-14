@@ -135,8 +135,6 @@ class CodeCache : AllStatic {
   // Make private to prevent unsafe calls.  Not all CodeBlob*'s are embedded in a CodeHeap.
   static bool contains(CodeBlob *p) { fatal("don't call me!"); return false; }
 
-  static void initialize_standard_heaps_and_hot_code_heap();
-
  public:
   // Initialization
   static void initialize();
@@ -286,20 +284,6 @@ class CodeCache : AllStatic {
     }
     ShouldNotReachHere();
     return static_cast<CodeBlobType>(0);
-  }
-
-  static bool is_heap_flushable(CodeHeap* code_heap) {
-    // TODO: Investigate whether any nmethods are flushed from
-    //       the non-nmethod code heap to make it non-flushable.
-    CodeBlobType code_blob_type = code_heap->code_blob_type();
-    return code_blob_type != CodeBlobType::MethodHot;
-  }
-
-  static bool is_code_flushable(nmethod* nm) {
-    if (!UseCodeCacheFlushing) {
-      return false;
-    }
-    return is_heap_flushable(get_code_heap(nm));
   }
 
   static void verify_clean_inline_caches();
