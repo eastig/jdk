@@ -78,7 +78,7 @@ import jdk.test.whitebox.code.NMethod;
     "-XX:+UseSerialGC",
     "-XX:+PrintCodeCache"
 })
-public class SparseCodeCache {
+public class SparseCodeCacheWeighted {
 
     private static final int C2_LEVEL = 4;
     private static final int DUMMY_BLOB_SIZE = 1024 * 1024;
@@ -108,7 +108,13 @@ public class SparseCodeCache {
     @Param({"2097152"})
     public int codeRegionSize;
 
+    @Param({"5000"})
+    public int totalCallsPerIteration;
+
     private TestMethod[] methods = {};
+    private double[] methodWeights;
+    private int[] callSequence;
+    private Random weightRandom;
 
     private static byte[] genNum(Random random, int digitCount) {
         byte[] num = new byte[digitCount];
@@ -139,6 +145,50 @@ public class SparseCodeCache {
 
     private static WhiteBox getWhiteBox() {
         return (WhiteBox)WB;
+    }
+
+    private void calculateWeights() {
+        methodWeights = new double[activeMethodCount];
+        double sum = 0.0;
+
+        // Calculate raw Zipf weights: weight[i] = 1 / rank
+        for (int i = 0; i < activeMethodCount; i++) {
+            double rank = i + 1; // 1-based ranking
+            methodWeights[i] = 1.0 / rank;
+            sum += methodWeights[i];
+        }
+
+        // Normalize weights to sum to 1.0
+        for (int i = 0; i < activeMethodCount; i++) {
+            methodWeights[i] /= sum;
+        }
+    }
+
+    private void generateCallSequence() {
+        callSequence = new int[totalCallsPerIteration];
+        weightRandom = new Random(42); // Fixed seed for reproducibility
+
+        // Convert weights to cumulative probabilities
+        double[] cumulativeWeights = new double[activeMethodCount];
+        cumulativeWeights[0] = methodWeights[0];
+        for (int i = 1; i < activeMethodCount; i++) {
+            cumulativeWeights[i] = cumulativeWeights[i - 1] + methodWeights[i];
+        }
+
+        // Generate call sequence using weighted random selection
+        for (int i = 0; i < totalCallsPerIteration; i++) {
+            double random = weightRandom.nextDouble();
+
+            // Binary search to find the method index
+            int methodIndex = 0;
+            for (int j = 0; j < activeMethodCount; j++) {
+                if (random <= cumulativeWeights[j]) {
+                    methodIndex = j;
+                    break;
+                }
+            }
+            callSequence[i] = methodIndex;
+        }
     }
 
     private static final class TestMethod {
@@ -335,14 +385,14 @@ public class SparseCodeCache {
         var threadState = new ThreadState();
         threadState.setup();
         callMethods(threadState);
-        Method method = SparseCodeCache.class.getDeclaredMethod("callMethods", ThreadState.class);
+        Method method = SparseCodeCacheWeighted.class.getDeclaredMethod("callMethods", ThreadState.class);
         getWhiteBox().markMethodProfiled(method);
         getWhiteBox().enqueueMethodForCompilation(method, C2_LEVEL);
         while (getWhiteBox().isMethodQueuedForCompilation(method)) {
             Thread.onSpinWait();
         }
         if (getWhiteBox().getMethodCompilationLevel(method) != C2_LEVEL) {
-            throw new IllegalStateException("Method SparseCodeCache::callMethods is not compiled by C2.");
+            throw new IllegalStateException("Method SparseCodeCacheWeighted::callMethods is not compiled by C2.");
         }
         getWhiteBox().testSetDontInlineMethod(method, true);
     }
@@ -350,13 +400,16 @@ public class SparseCodeCache {
     @Setup(Level.Trial)
     public void setupCodeCache() throws Exception {
         initWhiteBox();
+        calculateWeights();
+        generateCallSequence();
         generateCode();
     }
 
     @CompilerControl(CompilerControl.Mode.DONT_INLINE)
     private void callMethods(ThreadState s) throws Exception {
-        for (var m : methods) {
-            m.invoke(num1, num2, s.result);
+        for (int i = 0; i < callSequence.length; i++) {
+            int methodIndex = callSequence[i];
+            methods[methodIndex].invoke(num1, num2, s.result);
         }
     }
 
