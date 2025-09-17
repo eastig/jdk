@@ -72,7 +72,6 @@ import jdk.test.whitebox.code.NMethod;
 public class UnorderedCodeCache {
 
     private static final int C2_LEVEL = 4;
-    private static final long KB = 1024 * 1024;
 
     static byte[] num1;
     static byte[] num2;
@@ -265,13 +264,14 @@ public class UnorderedCodeCache {
 
         byte[] result = new byte[num1.length + 1];
 
-        while (getWhiteBox().getHeapUnallocatedCapacity(BlobType.MethodNonProfiled.id) > 64 * KB) {
+        // Compile while more than 25% free
+        while ((double)getWhiteBox().getHeapUnallocatedCapacity(BlobType.MethodNonProfiled.id) / getWhiteBox().getHeapMaxCapacity(BlobType.MethodNonProfiled.id) > 0.25) {
             TestMethod m = new TestMethod();
             m.profile(num1, num2, result);
             m.enqueueForC2Compilation();
             methods.add(m);
 
-            while (getWhiteBox().getCompileQueueSize(C2_LEVEL) > compilerThreads) {
+            while (getWhiteBox().getCompileQueueSize(C2_LEVEL) > compilerThreads * 2) {
                 Thread.onSpinWait(); // Wait to queue methods until room in queue
             }
         }

@@ -486,6 +486,11 @@ WB_ENTRY(jlong, WB_GetHeapAlignment(JNIEnv* env, jobject o))
   return (jlong)HeapAlignment;
 WB_END
 
+WB_ENTRY(jlong, WB_GetHeapMaxCapacity(JNIEnv* env, jobject o, jint blob_type))
+  CodeHeap* heap = WhiteBox::get_code_heap(static_cast<CodeBlobType>(blob_type));
+  return (jlong)heap->max_capacity();
+WB_END
+
 WB_ENTRY(jlong, WB_GetHeapUnallocatedCapacity(JNIEnv* env, jobject o, jint blob_type))
   CodeHeap* heap = WhiteBox::get_code_heap(static_cast<CodeBlobType>(blob_type));
   return (jlong)heap->unallocated_capacity();
@@ -2818,6 +2823,7 @@ static JNINativeMethod methods[] = {
   {CC"getVMLargePageSize",               CC"()J",                   (void*)&WB_GetVMLargePageSize},
   {CC"getHeapSpaceAlignment",            CC"()J",                   (void*)&WB_GetHeapSpaceAlignment},
   {CC"getHeapAlignment",                 CC"()J",                   (void*)&WB_GetHeapAlignment},
+  {CC"getHeapMaxCapacity",               CC"(I)J",                  (void*)&WB_GetHeapMaxCapacity},
   {CC"getHeapUnallocatedCapacity",       CC"(I)J",                  (void*)&WB_GetHeapUnallocatedCapacity},
   {CC"countAliveClasses0",               CC"(Ljava/lang/String;)I", (void*)&WB_CountAliveClasses },
   {CC"getSymbolRefcount",                CC"(Ljava/lang/String;)I", (void*)&WB_GetSymbolRefcount },
