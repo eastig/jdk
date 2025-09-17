@@ -89,10 +89,7 @@ public class UnorderedCodeCache {
     private static Object WB;
     private static long compilerThreads;
 
-    @Param({"true", "false"})
-    public boolean shuffleMethodWeights;
-
-    @Param({"5000"})
+    @Param({"5000", "20000"})
     public int totalCallsPerIteration;
 
     private ArrayList<TestMethod> methods = new ArrayList<>();
@@ -148,15 +145,13 @@ public class UnorderedCodeCache {
             methodWeights[i] /= sum;
         }
 
-        if (shuffleMethodWeights) {
-            // Shuffle methodWeights in place to randomize assignment
-            Random shuffleRandom = new Random(42);
-            for (int i = methods.size() - 1; i > 0; i--) {
-                int j = shuffleRandom.nextInt(i + 1);
-                double temp = methodWeights[i];
-                methodWeights[i] = methodWeights[j];
-                methodWeights[j] = temp;
-            }
+        // Shuffle methodWeights in place to randomize assignment
+        Random shuffleRandom = new Random(42);
+        for (int i = methods.size() - 1; i > 0; i--) {
+            int j = shuffleRandom.nextInt(i + 1);
+            double temp = methodWeights[i];
+            methodWeights[i] = methodWeights[j];
+            methodWeights[j] = temp;
         }
     }
 
@@ -321,7 +316,7 @@ public class UnorderedCodeCache {
     }
 
     @Benchmark
-    @Warmup(iterations = 10)
+    @Warmup(iterations = 20)
     public void runMethodsWithReflection(ThreadState s) throws Exception {
         callMethods(s);
     }
