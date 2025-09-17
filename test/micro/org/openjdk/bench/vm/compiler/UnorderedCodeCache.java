@@ -282,6 +282,9 @@ public class UnorderedCodeCache {
 
         // Remove methods that could have failed compilation
         methods.removeIf(m -> !m.isC2Compiled());
+
+        // Sort methods based on address in CodeCache
+        methods.sort((a, b) -> Long.compare(a.getNMethod().address, b.getNMethod().address));
     }
 
     private void compileCallMethods() throws Exception {
