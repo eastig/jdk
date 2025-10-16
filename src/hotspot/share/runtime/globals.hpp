@@ -1543,9 +1543,17 @@ const int ObjectAlignmentInBytes = 8;
           constraint(VMPageSizeConstraintFunc, AtParse)                     \
                                                                             \
   /* TODO: create product_pd version */                                     \
-  product(size_t, HotCodeHeapSize, 0,                                        \
+  product(size_t, HotCodeHeapSize, 0, EXPERIMENTAL,                         \
           "Size of code heap with predicted hot methods (in bytes)")        \
           constraint(VMPageSizeConstraintFunc, AtParse)                     \
+                                                                            \
+  product(double, HotCodeMinMethodFrequency, 0.0001, DIAGNOSTIC,            \
+          "Minimum frequency of a method to be considered actively used")   \
+          range(0.0, 1.0)                                                   \
+                                                                            \
+  product(size_t, HotCodeMaxNotSeenInProfiles, 1, DIAGNOSTIC,               \
+          "Maximum number of consecutive profiles a method has not been "   \
+          "seen in to consider it not actively used")                       \
                                                                             \
   product_pd(uintx, CodeCacheExpansionSize,                                 \
           "Code cache expansion size (in bytes)")                           \
