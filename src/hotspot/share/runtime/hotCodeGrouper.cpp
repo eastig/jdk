@@ -1,4 +1,4 @@
-#include "code/codeCache.hpp"
+#include "code/codeCache.inline.hpp"
 #include "code/compiledIC.hpp"
 #include "compiler/compilerDefinitions.inline.hpp"
 #include "logging/log.hpp"
