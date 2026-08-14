@@ -83,7 +83,7 @@ public class HotCodeCollectorMoveFunction {
 
         static {
             try {
-                method = Runner.class.getMethod("func");
+                method = Runner.class.getMethod("func", int.class);
             } catch (NoSuchMethodException e) {
                 throw new RuntimeException(e);
             }
@@ -95,7 +95,7 @@ public class HotCodeCollectorMoveFunction {
             compileFunc();
 
             // Call function so collector samples and relocates
-            func();
+            func(FUNC_RUN_MILLIS);
 
             // Function should now be in the Hot code heap after collector has had time to relocate
             NMethod relocatedNMethod = NMethod.get(method, false);
@@ -104,6 +104,7 @@ public class HotCodeCollectorMoveFunction {
         }
 
         private static void compileFunc() {
+            func(10);
             WHITE_BOX.enqueueMethodForCompilation(method, C2_LEVEL);
 
             if (WHITE_BOX.getMethodCompilationLevel(method) != C2_LEVEL) {
@@ -111,15 +112,22 @@ public class HotCodeCollectorMoveFunction {
             }
         }
 
-        public static void func() {
+        public static void func(int ms) {
+            blackholeCount = 0;
+
             long start = System.currentTimeMillis();
-            while (System.currentTimeMillis() - start < FUNC_RUN_MILLIS) {
-                // Perform multiplicative LCG to ensure the compiler does not optimize away the code.
-                // Integer overflow is used for the modulus so the loop terminates after (2^32)/4 iterations
+            while (System.currentTimeMillis() - start < ms) {
+                // Perform multiplicative LCG work and check the deadline every 100 iterations.
+                // This keeps most of the sampling interval in compiled Java code; integer
+                // overflow provides implicit modulo-2^32 arithmetic.
+                // So the loop terminates either after (2^32)/4 iterations or the deadline is met earlier.
                 int num = 1;
                 do {
                     blackholeCount++;
                     num *= 69069;
+                    if ((blackholeCount % 100) == 0 && System.currentTimeMillis() - start >= ms) {
+                        return;
+                    }
                 } while (num != 1);
             }
         }
